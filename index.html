@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maintenance Operations Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0d0f14;--surface:#13161e;--surface2:#1a1e28;--border:#252a38;
+  --text:#e2e6f0;--muted:#6b7394;--accent:#4fffb0;--accent2:#4f9fff;
+  --warn:#ffb84f;--danger:#ff5e7a;--good:#4fffb0;
+  --fd:Arial,'Helvetica Neue',Helvetica,sans-serif;--fm:'DM Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100vh;}
+.header{display:flex;align-items:center;justify-content:space-between;padding:20px 32px;
+  border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:100;}
+.header-left{display:flex;align-items:center;gap:14px;}
+.logo{width:36px;height:36px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.logo svg{width:20px;height:20px;}
+.htitle{font-size:16px;font-weight:700;letter-spacing:.02em;}
+.hsub{font-size:12px;color:var(--muted);font-family:var(--fm);margin-top:2px;}
+.asof{font-family:var(--fm);font-size:11px;color:var(--muted);}
+.asof span{color:var(--accent);}
+.tabs{display:flex;gap:2px;padding:16px 32px 0;border-bottom:1px solid var(--border);background:var(--surface);}
+.tab{padding:9px 18px;font-size:13px;font-weight:600;font-family:var(--fd);color:var(--muted);
+  cursor:pointer;border-radius:6px 6px 0 0;border:1px solid transparent;border-bottom:none;transition:all .15s;background:transparent;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--text);background:var(--bg);border-color:var(--border);border-bottom-color:var(--bg);position:relative;bottom:-1px;}
+.page{display:none;padding:28px 32px 40px;}
+.page.active{display:block;}
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin-bottom:28px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;position:relative;overflow:hidden;}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kc,var(--accent));}
+.kpi-label{font-size:10px;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.kpi-value{font-size:30px;font-weight:800;line-height:1;}
+.kpi-meta{font-size:11px;color:var(--muted);margin-top:5px;font-family:var(--fm);display:flex;gap:8px;align-items:center;}
+.delta{font-size:11px;font-family:var(--fm);}
+.delta.up{color:var(--danger);}
+.delta.dn{color:var(--good);}
+.delta.nu{color:var(--muted);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;}
+.s2{grid-column:span 2;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px 22px;}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.ctitle{font-size:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);}
+.cbadge{font-family:var(--fm);font-size:10px;padding:3px 8px;border-radius:4px;background:var(--surface2);
+  color:var(--muted);border:1px solid var(--border);}
+.cw{position:relative;height:220px;}
+.cwt{position:relative;height:300px;}
+.dt{width:100%;border-collapse:collapse;}
+.dt th{font-family:var(--fm);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);
+  padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);font-weight:500;}
+.dt th.r{text-align:right;}
+.dt td{padding:9px 10px;font-size:13px;border-bottom:1px solid rgba(37,42,56,.5);vertical-align:middle;}
+.dt td.r{text-align:right;font-family:var(--fm);font-size:12px;}
+.dt tr:last-child td{border-bottom:none;}
+.dt tr:hover td{background:rgba(79,255,176,.03);}
+.pname{font-weight:600;font-size:13px;}
+.pill{display:inline-block;font-family:var(--fm);font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px;min-width:36px;text-align:center;}
+.pg{background:rgba(79,255,176,.12);color:var(--good);}
+.py{background:rgba(255,184,79,.12);color:var(--warn);}
+.pr{background:rgba(255,94,122,.12);color:var(--danger);}
+.pn{background:rgba(107,115,148,.12);color:var(--muted);}
+.barcell{display:flex;align-items:center;gap:8px;}
+.btrk{flex:1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.bfil{height:100%;border-radius:3px;background:var(--accent);transition:width .4s ease;}
+.bfil.w{background:var(--warn);}
+.bfil.d{background:var(--danger);}
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;}
+.tcard{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+.tname{font-size:13px;font-weight:700;margin-bottom:10px;}
+.trow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+.trl{font-size:11px;color:var(--muted);font-family:var(--fm);}
+.trv{font-size:12px;font-family:var(--fm);font-weight:500;}
+.tbar{width:100%;height:4px;background:var(--border);border-radius:2px;margin-top:8px;overflow:hidden;}
+.tbfil{height:100%;border-radius:2px;transition:width .4s ease;}
+.slabel{font-size:10px;font-family:var(--fm);text-transform:uppercase;letter-spacing:.1em;color:var(--muted);
+  margin:24px 0 12px;display:flex;align-items:center;gap:10px;}
+.slabel::after{content:'';flex:1;height:1px;background:var(--border);}
+.crow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(37,42,56,.6);}
+.crow:last-child{border-bottom:none;}
+.clabel{font-size:12px;font-family:var(--fm);width:110px;flex-shrink:0;color:var(--muted);}
+.cbars{flex:1;display:flex;flex-direction:column;gap:3px;}
+.cbarrow{display:flex;align-items:center;gap:6px;}
+.cbarlbl{font-size:10px;width:32px;color:var(--muted);flex-shrink:0;}
+.cbartrk{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
+.cbarfil{height:100%;border-radius:3px;}
+.cbarval{font-size:10px;font-family:var(--fm);width:28px;text-align:right;flex-shrink:0;}
+@media(max-width:900px){
+  .g2,.g3{grid-template-columns:1fr;}
+  .s2{grid-column:span 1;}
+  .kpi-strip{grid-template-columns:repeat(2,1fr);}
+  .header,.tabs,.page{padding-left:18px;padding-right:18px;}
+  .tgrid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo">
+      <svg viewBox="0 0 20 20" fill="none"><rect x="2" y="10" width="4" height="8" rx="1" fill="#0d0f14"/><rect x="8" y="6" width="4" height="12" rx="1" fill="#0d0f14"/><rect x="14" y="2" width="4" height="16" rx="1" fill="#0d0f14"/></svg>
+    </div>
+    <div>
+      <div class="htitle">Maintenance Operations</div>
+      <div class="hsub">Portfolio Work Request Intelligence</div>
+    </div>
+  </div>
+  <div class="asof">Last Run <span id="asofDate">—</span></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showPage('portfolio',this)">Portfolio</div>
+  <div class="tab" onclick="showPage('properties',this)">By Property</div>
+  <div class="tab" onclick="showPage('technicians',this)">By Technician</div>
+  <div class="tab" onclick="showPage('averages',this)">Avg Day Benchmarks</div>
+</div>
+
+<div class="page active" id="page-portfolio">
+  <div class="kpi-strip" id="port-kpis"></div>
+  <div class="g2">
+    <div class="card s2">
+      <div class="ch"><div class="ctitle">Open WRs — 44-Day Trend</div><div class="cbadge">Feb 15 → Mar 30, 2026</div></div>
+      <div class="cwt"><canvas id="trendChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ctitle">Daily Flow — Opened vs Closed</div><div class="cbadge">All 44 Days</div></div>
+      <div class="cw"><canvas id="flowChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ctitle">Backlog vs 7d+ Aging</div><div class="cbadge">Stale Pressure</div></div>
+      <div class="cw"><canvas id="backlogChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-properties">
+  <div class="card" style="margin-bottom:20px;">
+    <div class="ch"><div class="ctitle">Open WRs by Property</div><div class="cbadge">as of 2026-03-30</div></div>
+    <div class="cwt"><canvas id="propBarChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="ch"><div class="ctitle">Property Detail</div><div class="cbadge" id="propbadge"></div></div>
+    <div style="overflow-x:auto;">
+      <table class="dt">
+        <thead><tr>
+          <th>Property</th><th class="r">Open Now</th><th class="r">Opened Yesterday</th><th class="r">Closed Yesterday</th><th class="r">Open Last 3d</th><th class="r">Open Last 7d</th><th class="r">Open More 7d</th><th class="r">Backlog</th><th class="r">Blg %</th>
+        </tr></thead>
+        <tbody id="propTbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="page" id="page-technicians">
+  <div class="g2" style="margin-bottom:20px;">
+    <div class="card">
+      <div class="ch"><div class="ctitle">Open WRs by Tech</div><div class="cbadge">as of 2026-03-30</div></div>
+      <div class="cwt"><canvas id="techBarChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ctitle">Backlog &amp; 7d+ by Tech</div><div class="cbadge">Stale WRs</div></div>
+      <div class="cwt"><canvas id="techBlgChart"></canvas></div>
+    </div>
+  </div>
+  <div class="slabel">Technician Detail Cards</div>
+  <div class="tgrid" id="techGrid"></div>
+</div>
+
+<div class="page" id="page-averages">
+  <div class="slabel">Portfolio Average Day — 6-Bucket Rolling</div>
+  <div class="kpi-strip" id="avg-kpis"></div>
+  <div class="g2" style="margin-bottom:20px;">
+    <div class="card">
+      <div class="ch"><div class="ctitle">Property — Avg Open vs Avg Backlog</div><div class="cbadge">Baseline</div></div>
+      <div class="cwt"><canvas id="avgPropChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ctitle">Tech — Avg Open vs Avg Completed/Day</div><div class="cbadge">Throughput</div></div>
+      <div class="cwt"><canvas id="avgTechChart"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><div class="ctitle">Today vs Average — Property Open Now</div><div class="cbadge">Actual vs Avg Open</div></div>
+    <div id="avgCompare"></div>
+  </div>
+</div>
+
+<style>
+#loadingOverlay{
+  position:fixed;inset:0;background:#0d0f14;z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+}
+.spinner{width:32px;height:32px;border:3px solid #252a38;border-top-color:#4fffb0;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-text{font-family:'DM Mono',monospace;font-size:12px;color:#6b7394;letter-spacing:.08em;}
+.load-err{font-family:'DM Mono',monospace;font-size:12px;color:#ff5e7a;letter-spacing:.05em;text-align:center;max-width:400px;line-height:1.6;}
+</style>
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbzhJsR-gjKGCpQc3opNG4z7KdSJpz2XXd4gw9KnJpBtk0O3opHS6HiKslDXGejJf-XO/exec";
+
+let MAX_DATE, PT, LP, LT, PA, PRA, TA, STALE, OPEN3D, OPEN7D;
+
+const C={a:'#4fffb0',b:'#4f9fff',w:'#ffb84f',d:'#ff5e7a',m:'#6b7394',t:'#e2e6f0',g:'rgba(37,42,56,.5)',bd:'#252a38'};
+const BASE={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#13161e',borderColor:'#252a38',borderWidth:1,titleColor:'#e2e6f0',bodyColor:'#6b7394',titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11},padding:10}},scales:{x:{grid:{color:C.g},ticks:{color:C.m,font:{family:"'DM Mono',monospace",size:10},maxRotation:45},border:{color:C.bd}},y:{grid:{color:C.g},ticks:{color:C.m,font:{family:"'DM Mono',monospace",size:10}},border:{color:C.bd}}}};
+const LEG={display:true,labels:{color:C.m,font:{family:"'DM Mono',monospace",size:10},boxWidth:10,padding:12}};
+function f1(v){return typeof v==='number'?v.toFixed(1):v;}
+
+function showPage(name,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── Transform the Apps Script JSON payload into the shape the dashboard expects ──
+function transformPayload(d) {
+  // Portfolio time series → PT object keyed by date
+  PT = {};
+  d.portfolio_ts.forEach(r => {
+    PT[r.date] = {open:r.open_now, opened:r.opened, closed:r.closed, backlog:r.backlog, over7:r.open_7d_plus||0};
+  });
+
+  // Latest properties → LP object
+  LP = {};
+  d.properties.forEach(r => {
+    LP[r.name] = {open:r.open_now, opened:r.opened||0, closed:r.closed||0, backlog:r.backlog, over7:r.open_7d_plus, last3d:r.opened_3d, last7d:r.opened_7d||0};
+  });
+
+  // Latest techs → LT object
+  LT = {};
+  d.techs.forEach(r => {
+    LT[r.name] = {open:r.open_now, backlog:r.backlog, over7:r.open_7d_plus};
+  });
+
+  // Portfolio averages → PA object
+  const k = d.portfolio_kpis;
+  PA = {
+    "Emergency": 0,
+    "ChkIn Count": k.avg_checkin_count || 0,
+    "ChkIn Hours": 0,
+    "Completed Day": k.avg_completed_day,
+    "ChkIn Not Done": 0,
+    "Opened Day": k.avg_opened_day,
+    "Closed Day": k.avg_completed_day,
+    "Open Last 3d": 0,
+    "Open Last 7d": 0,
+    "Backlog": k.avg_backlog,
+    "Open Now": k.avg_open_now,
+    "Open More 7d": k.avg_open_more_7d || 0
+  };
+
+  // Property averages → PRA object
+  PRA = {};
+  d.properties.forEach(r => {
+    PRA[r.name] = {"Open Now":r.avg_open_now,"Backlog":r.avg_backlog,"Open More 7d":0,"Completed Day":0,"Opened Day":0};
+  });
+
+  // Tech averages → TA object
+  TA = {};
+  d.techs.forEach(r => {
+    TA[r.name] = {"Open Now":r.avg_open_now,"Backlog":0,"Open More 7d":0,"Completed Day":r.avg_completed_day,"Opened Day":0};
+  });
+
+  STALE = d.portfolio_kpis.open_7d_plus || 0;
+  OPEN3D = d.portfolio_kpis.opened_3d || 0;
+  OPEN7D = d.portfolio_kpis.opened_7d || 0;
+  MAX_DATE = d.latest_date;
+}
+
+// ── Fetch live data then boot the dashboard ──
+document.addEventListener('DOMContentLoaded', () => {
+  // Inject loading overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'loadingOverlay';
+  overlay.innerHTML = `<div class="spinner"></div><div class="load-text">Loading live data…</div>`;
+  document.body.appendChild(overlay);
+
+  // JSONP: inject a script tag pointing at the Apps Script URL with a callback
+  const callbackName = "dashboardCallback_" + Date.now();
+  const timeout = setTimeout(() => {
+    overlay.innerHTML = `
+      <div class="load-err">
+        ⚠️ Could not load live data.<br><br>
+        Request timed out after 15 seconds.<br><br>
+        Check that the Apps Script web app is deployed with<br>
+        <strong style="color:#e2e6f0">Execute as: Me · Access: Anyone</strong>
+      </div>`;
+  }, 15000);
+
+  window[callbackName] = function(data) {
+    clearTimeout(timeout);
+    try {
+      transformPayload(data);
+      document.getElementById('asofDate').textContent = MAX_DATE;
+      buildPortfolio();
+      buildProperties();
+      buildTechs();
+      buildAverages();
+      overlay.remove();
+    } catch(err) {
+      overlay.innerHTML = `
+        <div class="load-err">
+          ⚠️ Error rendering dashboard.<br><br>${err.message}
+        </div>`;
+    }
+    delete window[callbackName];
+  };
+
+  const script = document.createElement('script');
+  script.src = API_URL + "?callback=" + callbackName;
+  script.onerror = () => {
+    clearTimeout(timeout);
+    overlay.innerHTML = `
+      <div class="load-err">
+        ⚠️ Could not load live data.<br><br>
+        Script load failed. Check deployment settings:<br><br>
+        <strong style="color:#e2e6f0">Execute as: Me · Access: Anyone</strong>
+      </div>`;
+  };
+  document.head.appendChild(script);
+});
+
+function buildPortfolio(){
+  const dates=Object.keys(PT).sort();
+  const latest=PT[dates[dates.length-1]];
+  const prev=PT[dates[dates.length-2]];
+  const over7=STALE;
+  const kpis=[
+    {l:'Open Now',v:latest.open,s:'avg '+Math.round(PA['Open Now']),c:latest.open>PA['Open Now']*1.2?C.d:C.a,dt:latest.open-prev.open,hb:true},
+    {l:'Opened Yesterday',v:latest.opened,s:'avg '+Math.round(PA['Opened Day'])+'/day',c:C.b,dt:latest.opened-prev.opened,hb:false},
+    {l:'Closed Yesterday',v:latest.closed,s:'avg '+Math.round(PA['Closed Day'])+'/day',c:C.a,dt:latest.closed-prev.closed,hb:false},
+    {l:'Open Last 3d',v:OPEN3D,s:'opened in last 3 days',c:C.b,dt:null,hb:true},
+    {l:'Open Last 7d',v:OPEN7D,s:'opened in last 7 days',c:C.b,dt:null,hb:true},
+    {l:'Open More 7d',v:over7,s:Math.round(over7/latest.open*100)+'% of open',c:over7>latest.open*.5?C.d:C.w,dt:null,hb:true},
+    {l:'Backlog',v:latest.backlog,s:'avg '+Math.round(PA['Backlog']),c:latest.backlog>PA['Backlog']*1.2?C.d:C.w,dt:latest.backlog-prev.backlog,hb:true},
+    {l:'Backlog Ratio',v:Math.round(latest.backlog/latest.open*100)+'%',s:'of open WRs',c:latest.backlog/latest.open>.6?C.d:C.w,noArr:true},
+  ];
+  const strip=document.getElementById('port-kpis');
+  kpis.forEach(k=>{
+    let dclass='nu',dlbl='— 0';
+    if(!k.noArr && k.dt !== null){dclass=k.dt>0?(k.hb?'up':'dn'):(k.dt<0?(k.hb?'dn':'up'):'nu');dlbl=k.dt>0?'▲ '+k.dt:(k.dt<0?'▼ '+Math.abs(k.dt):'— 0');}
+    strip.innerHTML+=`<div class="kpi" style="--kc:${k.c}"><div class="kpi-label">${k.l}</div><div class="kpi-value">${k.v}</div><div class="kpi-meta">${k.s}${(!k.noArr && k.dt !== null)?`<span class="delta ${dclass}">${dlbl}</span>`:''}</div></div>`;
+  });
+  const dl=dates.map(d=>d.slice(5));
+  const avgOpenVal = Math.round(PA['Open Now']);
+  const avgLabelPlugin = {
+    id:'avgLabel',
+    afterDatasetsDraw(chart){
+      const {ctx,scales:{x,y}}=chart;
+      const xPos=x.right+6;
+      const yPos=y.getPixelForValue(avgOpenVal);
+      ctx.save();
+      ctx.fillStyle='#e2b84f';
+      ctx.font='bold 11px \'DM Mono\', monospace';
+      ctx.textBaseline='middle';
+      ctx.fillText('avg '+avgOpenVal, xPos, yPos);
+      ctx.restore();
+    }
+  };
+  new Chart(document.getElementById('trendChart'),{
+    type:'line',
+    data:{labels:dl,datasets:[
+      {label:'Open Now',data:dates.map(d=>PT[d].open),borderColor:C.a,backgroundColor:'rgba(79,255,176,.08)',fill:true,tension:.3,pointRadius:2,borderWidth:2},
+      {label:'Open More 7d',data:dates.map(d=>PT[d].over7),borderColor:C.d,fill:false,tension:.3,pointRadius:2,borderWidth:1.5,borderDash:[4,3]},
+      {label:'Avg Open',data:dates.map(()=>avgOpenVal),borderColor:'#e2b84f',fill:false,tension:0,pointRadius:0,borderWidth:2,borderDash:[8,4]},
+    ]},
+    options:{
+      ...BASE,
+      layout:{padding:{right:70}},
+      plugins:{...BASE.plugins,legend:LEG}
+    },
+    plugins:[avgLabelPlugin]
+  });
+  new Chart(document.getElementById('flowChart'),{type:'bar',data:{labels:dl,datasets:[
+    {label:'Opened',data:dates.map(d=>PT[d].opened),backgroundColor:'rgba(79,159,255,.6)',borderRadius:2},
+    {label:'Closed',data:dates.map(d=>PT[d].closed),backgroundColor:'rgba(79,255,176,.6)',borderRadius:2},
+  ]},options:{...BASE,plugins:{...BASE.plugins,legend:LEG}}});
+  new Chart(document.getElementById('backlogChart'),{type:'line',data:{labels:dl,datasets:[
+    {label:'Backlog',data:dates.map(d=>PT[d].backlog),borderColor:C.w,backgroundColor:'rgba(255,184,79,.08)',fill:true,tension:.3,pointRadius:2,borderWidth:2},
+    {label:'7d+ Old',data:dates.map(d=>PT[d].over7),borderColor:C.d,backgroundColor:'rgba(255,94,122,.08)',fill:true,tension:.3,pointRadius:2,borderWidth:2},
+  ]},options:{...BASE,plugins:{...BASE.plugins,legend:LEG}}});
+}
+
+function buildProperties(){
+  const props=Object.entries(LP).sort((a,b)=>b[1].open-a[1].open);
+  const maxO=Math.max(...props.map(p=>p[1].open));
+  document.getElementById('propbadge').textContent=props.length+' properties';
+  new Chart(document.getElementById('propBarChart'),{type:'bar',data:{labels:props.map(p=>p[0]),datasets:[
+    {label:'Open',data:props.map(p=>p[1].open),backgroundColor:props.map(p=>p[1].open>=10?'rgba(255,94,122,.7)':p[1].open>=5?'rgba(255,184,79,.7)':'rgba(79,255,176,.7)'),borderRadius:3},
+    {label:'Backlog',data:props.map(p=>p[1].backlog),backgroundColor:'rgba(255,184,79,.3)',borderRadius:3},
+  ]},options:{...BASE,plugins:{...BASE.plugins,legend:LEG},scales:{...BASE.scales,x:{...BASE.scales.x,ticks:{...BASE.scales.x.ticks,maxRotation:50}}}}});
+  const tbody=document.getElementById('propTbody');
+  props.forEach(([name,d])=>{
+    const bp=d.open>0?d.backlog/d.open:0;
+    const avgO=PRA[name]?PRA[name]['Open Now']:0;
+    const barPct=maxO>0?Math.round(d.open/maxO*100):0;
+    const bc=d.open>=10?'d':d.open>=5?'w':'';
+    const pc=d.open>=10?'pr':d.open>=5?'py':d.open>0?'pg':'pn';
+    const bpc=d.backlog>5?'pr':d.backlog>0?'py':'pn';
+    const o7c=d.over7>5?'pr':d.over7>0?'py':'pn';
+    const bpColor=bp>.6?C.d:bp>.3?C.w:C.a;
+    tbody.innerHTML+=`<tr>
+      <td><span class="pname">${name}</span></td>
+      <td class="r"><span class="pill ${pc}">${d.open}</span></td>
+      <td class="r" style="color:${C.b}">${d.opened}</td>
+      <td class="r" style="color:${C.a}">${d.closed}</td>
+      <td class="r" style="color:${C.b}">${d.last3d}</td>
+      <td class="r" style="color:${C.b}">${d.last7d}</td>
+      <td class="r"><span class="pill ${o7c}">${d.over7}</span></td>
+      <td class="r"><span class="pill ${bpc}">${d.backlog}</span></td>
+      <td class="r" style="color:${bpColor}">${d.open>0?Math.round(bp*100)+'%':'—'}</td>
+    </tr>`;
+  });
+}
+
+function buildTechs(){
+  const techs=Object.entries(LT).sort((a,b)=>b[1].open-a[1].open);
+  const maxO=Math.max(...techs.map(t=>t[1].open));
+  const fn=n=>n.split(' ')[0];
+  new Chart(document.getElementById('techBarChart'),{type:'bar',data:{labels:techs.map(t=>fn(t[0])),datasets:[
+    {label:'Open',data:techs.map(t=>t[1].open),backgroundColor:techs.map(t=>t[1].open>=20?'rgba(255,94,122,.7)':t[1].open>=10?'rgba(255,184,79,.7)':'rgba(79,255,176,.7)'),borderRadius:3},
+  ]},options:{...BASE}});
+  new Chart(document.getElementById('techBlgChart'),{type:'bar',data:{labels:techs.map(t=>fn(t[0])),datasets:[
+    {label:'Backlog',data:techs.map(t=>t[1].backlog),backgroundColor:'rgba(255,184,79,.65)',borderRadius:3},
+    {label:'7d+ Old',data:techs.map(t=>t[1].over7),backgroundColor:'rgba(255,94,122,.4)',borderRadius:3},
+  ]},options:{...BASE,plugins:{...BASE.plugins,legend:LEG}}});
+  const grid=document.getElementById('techGrid');
+  techs.forEach(([name,d])=>{
+    const avg=TA[name]||{};
+    const bp=d.open>0?d.backlog/d.open:0;
+    const tc=d.open>=20?C.d:d.open>=10?C.w:C.a;
+    const lp=maxO>0?Math.round(d.open/maxO*100):0;
+    grid.innerHTML+=`<div class="tcard">
+      <div class="tname">${name}</div>
+      <div class="trow"><span class="trl">Open WRs</span><span class="trv" style="color:${tc}">${d.open}</span></div>
+      <div class="trow"><span class="trl">Backlog</span><span class="trv" style="color:${bp>.5?C.d:C.w}">${d.backlog} (${d.open>0?Math.round(bp*100):0}%)</span></div>
+      <div class="trow"><span class="trl">7d+ Old</span><span class="trv" style="color:${d.over7>5?C.d:C.m}">${d.over7}</span></div>
+      <div class="trow"><span class="trl">Avg Open</span><span class="trv" style="color:${C.m}">${f1(avg['Open Now']||0)}</span></div>
+      <div class="trow"><span class="trl">Avg Done/Day</span><span class="trv" style="color:${C.b}">${f1(avg['Completed Day']||0)}</span></div>
+      <div class="tbar"><div class="tbfil" style="width:${lp}%;background:${tc}"></div></div>
+    </div>`;
+  });
+}
+
+function buildAverages(){
+  const kpis=[
+    {l:'Avg Open Now',k:'Open Now',c:C.a},{l:'Avg Opened/Day',k:'Opened Day',c:C.b},
+    {l:'Avg Completed/Day',k:'Completed Day',c:C.a},{l:'Avg Backlog',k:'Backlog',c:C.w},
+    {l:'Avg 7d+ Stale',k:'Open More 7d',c:C.d},{l:'Avg Check-In/Day',k:'ChkIn Count',c:C.b},
+  ];
+  const strip=document.getElementById('avg-kpis');
+  kpis.forEach(k=>{strip.innerHTML+=`<div class="kpi" style="--kc:${k.c}"><div class="kpi-label">${k.l}</div><div class="kpi-value" style="font-size:24px">${f1(PA[k.k])}</div><div class="kpi-meta">6-bucket avg</div></div>`;});
+  const ps=Object.entries(PRA).sort((a,b)=>b[1]['Open Now']-a[1]['Open Now']);
+  new Chart(document.getElementById('avgPropChart'),{type:'bar',data:{labels:ps.map(p=>p[0]),datasets:[
+    {label:'Avg Open',data:ps.map(p=>+f1(p[1]['Open Now'])),backgroundColor:'rgba(79,255,176,.55)',borderRadius:3},
+    {label:'Avg Backlog',data:ps.map(p=>+f1(p[1]['Backlog'])),backgroundColor:'rgba(255,184,79,.4)',borderRadius:3},
+  ]},options:{...BASE,plugins:{...BASE.plugins,legend:LEG},scales:{...BASE.scales,x:{...BASE.scales.x,ticks:{...BASE.scales.x.ticks,maxRotation:50}}}}});
+  const ts=Object.entries(TA).sort((a,b)=>b[1]['Open Now']-a[1]['Open Now']);
+  new Chart(document.getElementById('avgTechChart'),{type:'bar',data:{labels:ts.map(t=>t[0].split(' ')[0]),datasets:[
+    {label:'Avg Open',data:ts.map(t=>+f1(t[1]['Open Now'])),backgroundColor:'rgba(79,159,255,.55)',borderRadius:3},
+    {label:'Avg Done/Day',data:ts.map(t=>+f1(t[1]['Completed Day'])),backgroundColor:'rgba(79,255,176,.55)',borderRadius:3},
+  ]},options:{...BASE,plugins:{...BASE.plugins,legend:LEG}}});
+  const comp=document.getElementById('avgCompare');
+  const cprops=Object.entries(LP).filter(([n])=>PRA[n]).sort((a,b)=>b[1].open-a[1].open);
+  const maxV=Math.max(...cprops.map(([n,d])=>Math.max(d.open,PRA[n]['Open Now'])));
+  cprops.forEach(([name,d])=>{
+    const avg=PRA[name]['Open Now'];
+    const ap=Math.round(d.open/maxV*100);
+    const vp=Math.round(avg/maxV*100);
+    const oc=d.open>avg*1.3?C.d:d.open>avg*1.1?C.w:C.a;
+    comp.innerHTML+=`<div class="crow">
+      <div class="clabel">${name}</div>
+      <div class="cbars">
+        <div class="cbarrow"><div class="cbarlbl" style="color:${C.a}">NOW</div><div class="cbartrk"><div class="cbarfil" style="width:${ap}%;background:${oc}"></div></div><div class="cbarval" style="color:${oc}">${d.open}</div></div>
+        <div class="cbarrow"><div class="cbarlbl" style="color:${C.m}">AVG</div><div class="cbartrk"><div class="cbarfil" style="width:${vp}%;background:rgba(107,115,148,.5)"></div></div><div class="cbarval" style="color:${C.m}">${f1(avg)}</div></div>
+      </div>
+    </div>`;
+  });
+}
+</script>
+</body>
+</html>
