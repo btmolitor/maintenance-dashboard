@@ -90,12 +90,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
 .cbartrk{flex:1;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden;}
 .cbarfil{height:100%;border-radius:3px;}
 .cbarval{font-size:10px;font-family:var(--fm);width:28px;text-align:right;flex-shrink:0;}
+.tech-kpi-section{margin-bottom:28px;}
+.tech-kpi-name{font-size:12px;font-weight:700;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.tech-kpi-row{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:16px;}
 @media(max-width:900px){
   .g2,.g3{grid-template-columns:1fr;}
   .s2{grid-column:span 1;}
   .kpi-strip{grid-template-columns:repeat(2,1fr);}
   .header,.tabs,.page{padding-left:18px;padding-right:18px;}
   .tgrid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr));}
+  .tech-kpi-row{grid-template-columns:repeat(4,1fr);}
 }
 </style>
 </head>
@@ -158,6 +162,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
 </div>
 
 <div class="page" id="page-technicians">
+  <div class="tech-kpi-section" id="techKpiSection"></div>
   <div class="g2" style="margin-bottom:20px;">
     <div class="card">
       <div class="ch"><div class="ctitle">Open WRs by Tech</div><div class="cbadge">as of 2026-03-30</div></div>
@@ -218,27 +223,22 @@ function showPage(name,el){
   el.classList.add('active');
 }
 
-// ── Transform the Apps Script JSON payload into the shape the dashboard expects ──
 function transformPayload(d) {
-  // Portfolio time series → PT object keyed by date
   PT = {};
   d.portfolio_ts.forEach(r => {
     PT[r.date] = {open:r.open_now, opened:r.opened, closed:r.closed, backlog:r.backlog, over7:r.open_7d_plus||0};
   });
 
-  // Latest properties → LP object
   LP = {};
   d.properties.forEach(r => {
     LP[r.name] = {open:r.open_now, opened:r.opened||0, closed:r.closed||0, backlog:r.backlog, over7:r.open_7d_plus, last3d:r.opened_3d, last7d:r.opened_7d||0};
   });
 
-  // Latest techs → LT object
   LT = {};
   d.techs.forEach(r => {
-    LT[r.name] = {open:r.open_now, backlog:r.backlog, over7:r.open_7d_plus};
+    LT[r.name] = {open:r.open_now, opened:r.opened||0, closed:r.closed||0, backlog:r.backlog, over7:r.open_7d_plus, last3d:r.opened_3d||0, last7d:r.opened_7d||0};
   });
 
-  // Portfolio averages → PA object
   const k = d.portfolio_kpis;
   PA = {
     "Emergency": 0,
@@ -255,13 +255,11 @@ function transformPayload(d) {
     "Open More 7d": k.avg_open_more_7d || 0
   };
 
-  // Property averages → PRA object
   PRA = {};
   d.properties.forEach(r => {
     PRA[r.name] = {"Open Now":r.avg_open_now,"Backlog":r.avg_backlog,"Open More 7d":0,"Completed Day":0,"Opened Day":0};
   });
 
-  // Tech averages → TA object
   TA = {};
   d.techs.forEach(r => {
     TA[r.name] = {"Open Now":r.avg_open_now,"Backlog":0,"Open More 7d":0,"Completed Day":r.avg_completed_day,"Opened Day":0};
@@ -273,15 +271,12 @@ function transformPayload(d) {
   MAX_DATE = d.latest_date;
 }
 
-// ── Fetch live data then boot the dashboard ──
 document.addEventListener('DOMContentLoaded', () => {
-  // Inject loading overlay
   const overlay = document.createElement('div');
   overlay.id = 'loadingOverlay';
   overlay.innerHTML = `<div class="spinner"></div><div class="load-text">Loading live data…</div>`;
   document.body.appendChild(overlay);
 
-  // JSONP: inject a script tag pointing at the Apps Script URL with a callback
   const callbackName = "dashboardCallback_" + Date.now();
   const timeout = setTimeout(() => {
     overlay.innerHTML = `
@@ -423,6 +418,28 @@ function buildTechs(){
   const techs=Object.entries(LT).sort((a,b)=>b[1].open-a[1].open);
   const maxO=Math.max(...techs.map(t=>t[1].open));
   const fn=n=>n.split(' ')[0];
+
+  // ── ADDED: one row of 8 KPI tiles per technician ──
+  const section=document.getElementById('techKpiSection');
+  techs.forEach(([name,d])=>{
+    const avg=TA[name]||{};
+    const bp=d.open>0?d.backlog/d.open:0;
+    const blgRatio=d.open>0?Math.round(bp*100):0;
+    const tkpis=[
+      {l:'Open Now',        v:d.open,      s:'avg '+f1(avg['Open Now']||0),                             c:d.open>(avg['Open Now']||0)*1.2?C.d:C.a},
+      {l:'Opened Yesterday',v:d.opened,    s:'yesterday',                                               c:C.b},
+      {l:'Closed Yesterday',v:d.closed,    s:'yesterday',                                               c:C.a},
+      {l:'Open Last 3d',    v:d.last3d,    s:'opened in last 3 days',                                   c:C.b},
+      {l:'Open Last 7d',    v:d.last7d,    s:'opened in last 7 days',                                   c:C.b},
+      {l:'Open More 7d',    v:d.over7,     s:Math.round(d.over7/Math.max(d.open,1)*100)+'% of open',   c:d.over7>d.open*.5?C.d:C.w},
+      {l:'Backlog',         v:d.backlog,   s:'avg '+f1(avg['Backlog']||0),                              c:bp>.5?C.d:C.w},
+      {l:'Backlog Ratio',   v:blgRatio+'%',s:'of open WRs',                                            c:blgRatio>60?C.d:C.w},
+    ];
+    const tilesHtml=tkpis.map(k=>`<div class="kpi" style="--kc:${k.c}"><div class="kpi-label">${k.l}</div><div class="kpi-value" style="font-size:20px">${k.v}</div><div class="kpi-meta">${k.s}</div></div>`).join('');
+    section.innerHTML+=`<div class="tech-kpi-name">${name}</div><div class="tech-kpi-row">${tilesHtml}</div>`;
+  });
+  // ── END ADDED ──
+
   new Chart(document.getElementById('techBarChart'),{type:'bar',data:{labels:techs.map(t=>fn(t[0])),datasets:[
     {label:'Open',data:techs.map(t=>t[1].open),backgroundColor:techs.map(t=>t[1].open>=20?'rgba(255,94,122,.7)':t[1].open>=10?'rgba(255,184,79,.7)':'rgba(79,255,176,.7)'),borderRadius:3},
   ]},options:{...BASE}});
