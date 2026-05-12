@@ -93,6 +93,42 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
 .tech-kpi-section{margin-bottom:28px;}
 .tech-kpi-name{font-size:12px;font-weight:700;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
 .tech-kpi-row{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:16px;}
+/* ── TURNOVER VIEW ── */
+.turnover-view{display:none;}
+.turnover-view.active{display:block;}
+.maintenance-view{display:block;}
+.maintenance-view.hidden{display:none;}
+.tv-section-label{font-size:11px;font-family:var(--fm);text-transform:uppercase;letter-spacing:.1em;
+  color:var(--muted);margin:24px 0 10px;display:flex;align-items:center;gap:10px;}
+.tv-section-label::after{content:'';flex:1;height:1px;background:var(--border);}
+.tv-table-wrap{overflow-x:auto;margin-bottom:28px;}
+.tv-table{border-collapse:collapse;font-family:var(--fm);font-size:11px;white-space:nowrap;}
+.tv-table th{padding:6px 10px;text-align:right;font-size:9px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);border-bottom:1px solid var(--border);font-weight:500;background:var(--surface);}
+.tv-table th.prop{text-align:left;min-width:130px;position:sticky;left:0;background:var(--surface);z-index:2;}
+.tv-table th.current{color:var(--accent);border-bottom:2px solid var(--accent);}
+.tv-table td{padding:5px 10px;text-align:right;border-bottom:1px solid rgba(37,42,56,.4);color:var(--text);}
+.tv-table td.prop{text-align:left;font-weight:600;font-size:12px;font-family:var(--fd);
+  position:sticky;left:0;background:var(--surface);z-index:1;border-right:1px solid var(--border);}
+.tv-table td.prop.subtotal{font-weight:400;font-size:11px;color:var(--muted);padding-left:18px;}
+.tv-table tr.portfolio td{background:rgba(79,255,176,.05);font-weight:600;}
+.tv-table tr.portfolio td.prop{background:rgba(79,255,176,.05);}
+.tv-table tr:hover td{background:rgba(79,255,176,.03);}
+.tv-table tr:hover td.prop{background:rgba(79,255,176,.06);}
+.tv-table td.zero{color:var(--border);}
+.tv-table td.open{color:var(--warn);}
+.tv-table td.done{color:var(--accent);}
+.tv-table td.mo{color:var(--accent2);}
+.tv-table .month-group{border-left:1px solid var(--border);}
+.tv-table th.month-group{border-left:1px solid var(--border);}
+.tv-month-header{background:var(--surface2)!important;}
+.tv-current-col{background:rgba(79,255,176,.03);}
+.tv-summary-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:24px;}
+.tv-kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;position:relative;}
+.tv-kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--kc,var(--accent));}
+.tv-kpi-label{font-size:9px;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.tv-kpi-value{font-size:24px;font-weight:800;line-height:1;}
+.tv-kpi-sub{font-size:10px;color:var(--muted);margin-top:4px;font-family:var(--fm);}
 @media(max-width:900px){
   .g2,.g3{grid-template-columns:1fr;}
   .s2{grid-column:span 1;}
@@ -104,7 +140,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
 </style>
 </head>
 <body>
-
+ 
 <div class="header">
   <div class="header-left">
     <div class="logo">
@@ -112,19 +148,29 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
     </div>
     <div>
       <div class="htitle">Maintenance Operations</div>
-      <div class="hsub">Portfolio Work Request Intelligence</div>
+      <div class="hsub">Portfolio Work Request Intelligence &nbsp;·&nbsp; <span id="modeIndicator" style="color:var(--accent)">Maintenance</span></div>
     </div>
   </div>
-  <div class="asof">Last Run <span id="asofDate">—</span></div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div class="asof">Last Run <span id="asofDate">—</span></div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="mode-label">Mode</span>
+      <div class="mode-toggle">
+        <button class="mode-btn active" id="btn-maintenance" onclick="setMode('maintenance')">Maintenance</button>
+        <button class="mode-btn" id="btn-turnover" onclick="setMode('turnover')">Turnover</button>
+      </div>
+    </div>
+  </div>
 </div>
-
+ 
 <div class="tabs">
   <div class="tab active" onclick="showPage('portfolio',this)">Portfolio</div>
   <div class="tab" onclick="showPage('properties',this)">By Property</div>
   <div class="tab" onclick="showPage('technicians',this)">By Technician</div>
   <div class="tab" onclick="showPage('averages',this)">Avg Day Benchmarks</div>
 </div>
-
+ 
+<div id="maintenance-pages" class="maintenance-view">
 <div class="page active" id="page-portfolio">
   <div class="kpi-strip" id="port-kpis"></div>
   <div class="g2">
@@ -142,7 +188,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
     </div>
   </div>
 </div>
-
+ 
 <div class="page" id="page-properties">
   <div class="card" style="margin-bottom:20px;">
     <div class="ch"><div class="ctitle">Open WRs by Property</div><div class="cbadge">as of 2026-03-30</div></div>
@@ -160,7 +206,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
     </div>
   </div>
 </div>
-
+ 
 <div class="page" id="page-technicians">
   <div class="tech-kpi-section" id="techKpiSection"></div>
   <div class="g2" style="margin-bottom:20px;">
@@ -176,7 +222,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
   <div class="slabel">Technician Detail Cards</div>
   <div class="tgrid" id="techGrid"></div>
 </div>
-
+ 
 <div class="page" id="page-averages">
   <div class="slabel">Portfolio Average Day — 6-Bucket Rolling</div>
   <div class="kpi-strip" id="avg-kpis"></div>
@@ -195,7 +241,20 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
     <div id="avgCompare"></div>
   </div>
 </div>
-
+ 
+</div><!-- end maintenance-pages -->
+ 
+<div id="turnover-page" class="turnover-view" style="padding:28px 32px 40px;display:none;">
+  <div class="tv-section-label">Current Month Summary</div>
+  <div class="tv-summary-strip" id="tv-summary"></div>
+  <div class="tv-section-label">VUMC Photos — Open by Month &amp; Property</div>
+  <div class="tv-table-wrap"><table class="tv-table" id="tv-photos-table"></table></div>
+  <div class="tv-section-label">VUMC Maintenance — Open by Month &amp; Property</div>
+  <div class="tv-table-wrap"><table class="tv-table" id="tv-vumc-table"></table></div>
+  <div class="tv-section-label">Move-Outs by Month &amp; Property (Total VUMC Photos)</div>
+  <div class="tv-table-wrap"><table class="tv-table" id="tv-mo-table"></table></div>
+</div>
+ 
 <style>
 #loadingOverlay{
   position:fixed;inset:0;background:#0d0f14;z-index:9999;
@@ -205,40 +264,124 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
 @keyframes spin{to{transform:rotate(360deg)}}
 .load-text{font-family:'DM Mono',monospace;font-size:12px;color:#6b7394;letter-spacing:.08em;}
 .load-err{font-family:'DM Mono',monospace;font-size:12px;color:#ff5e7a;letter-spacing:.05em;text-align:center;max-width:400px;line-height:1.6;}
+.mode-toggle{display:flex;align-items:center;gap:0;background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px;}
+.mode-btn{padding:5px 14px;border-radius:16px;font-size:12px;font-weight:600;font-family:var(--fm);cursor:pointer;border:none;background:transparent;color:var(--muted);transition:all .2s;letter-spacing:.04em;}
+.mode-btn.active{background:var(--accent);color:#0d0f14;}
+.mode-btn.active.turnover{background:#a78bfa;color:#0d0f14;}
+.mode-label{font-size:10px;font-family:var(--fm);color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-right:8px;}
 </style>
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbzhJsR-gjKGCpQc3opNG4z7KdSJpz2XXd4gw9KnJpBtk0O3opHS6HiKslDXGejJf-XO/exec";
-
+ 
 let MAX_DATE, PT, LP, LT, PA, PRA, TA, STALE, OPEN3D, OPEN7D;
-
+let CURRENT_MODE = 'maintenance';
+ 
+function setMode(mode) {
+  if (CURRENT_MODE === mode) return;
+  CURRENT_MODE = mode;
+ 
+  // Update toggle buttons
+  document.getElementById('btn-maintenance').className = 'mode-btn' + (mode === 'maintenance' ? ' active' : '');
+  document.getElementById('btn-turnover').className = 'mode-btn' + (mode === 'turnover' ? ' active turnover' : '');
+ 
+  // Update mode indicator
+  document.getElementById('modeIndicator').textContent = mode === 'turnover' ? 'Turnover (VUMC)' : 'Maintenance';
+  document.getElementById('modeIndicator').style.color = mode === 'turnover' ? '#a78bfa' : 'var(--accent)';
+ 
+  // Show/hide views
+  const mPages = document.getElementById('maintenance-pages');
+  const tPage  = document.getElementById('turnover-page');
+  const tabs   = document.querySelector('.tabs');
+  if (mode === 'turnover') {
+    mPages.style.display = 'none';
+    tPage.style.display  = 'block';
+    tabs.style.display   = 'none';
+  } else {
+    mPages.style.display = '';
+    tPage.style.display  = 'none';
+    tabs.style.display   = '';
+  }
+ 
+  // Re-fetch and re-render
+  loadData();
+}
+ 
+function loadData() {
+  const overlay = document.createElement('div');
+  overlay.id = 'reloadOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(13,15,20,.8);z-index:9999;display:flex;align-items:center;justify-content:center;';
+  overlay.innerHTML = '<div class="spinner"></div>';
+  document.body.appendChild(overlay);
+ 
+  // Clear all rendered content
+  ['port-kpis','propTbody','techKpiSection','techGrid','avg-kpis','avgCompare',
+   'tv-summary','tv-photos-table','tv-vumc-table','tv-mo-table'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+ 
+  // Destroy existing charts
+  Chart.helpers.each(Chart.instances, chart => chart.destroy());
+ 
+  const callbackName = "dashboardCallback_" + Date.now();
+  const timeout = setTimeout(() => { overlay.remove(); }, 15000);
+ 
+  window[callbackName] = function(data) {
+    clearTimeout(timeout);
+    try {
+      if (CURRENT_MODE === 'turnover') {
+        buildTurnover(data);
+        document.getElementById('asofDate').textContent = data.generated || '—';
+      } else {
+        transformPayload(data);
+        document.getElementById('asofDate').textContent = MAX_DATE;
+        buildPortfolio();
+        buildProperties();
+        buildTechs();
+        buildAverages();
+      }
+    } catch(err) {
+      console.error(err);
+    }
+    overlay.remove();
+    delete window[callbackName];
+  };
+ 
+  const script = document.createElement('script');
+  const modeParam = CURRENT_MODE === 'turnover' ? '&mode=turnover' : '';
+  script.src = API_URL + "?callback=" + callbackName + modeParam;
+  script.onerror = () => { clearTimeout(timeout); overlay.remove(); };
+  document.head.appendChild(script);
+}
+ 
 const C={a:'#4fffb0',b:'#4f9fff',w:'#ffb84f',d:'#ff5e7a',m:'#6b7394',t:'#e2e6f0',g:'rgba(37,42,56,.5)',bd:'#252a38'};
 const BASE={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#13161e',borderColor:'#252a38',borderWidth:1,titleColor:'#e2e6f0',bodyColor:'#6b7394',titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11},padding:10}},scales:{x:{grid:{color:C.g},ticks:{color:C.m,font:{family:"'DM Mono',monospace",size:10},maxRotation:45},border:{color:C.bd}},y:{grid:{color:C.g},ticks:{color:C.m,font:{family:"'DM Mono',monospace",size:10}},border:{color:C.bd}}}};
 const LEG={display:true,labels:{color:C.m,font:{family:"'DM Mono',monospace",size:10},boxWidth:10,padding:12}};
 function f1(v){return typeof v==='number'?v.toFixed(1):v;}
-
+ 
 function showPage(name,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   el.classList.add('active');
 }
-
+ 
 function transformPayload(d) {
   PT = {};
   d.portfolio_ts.forEach(r => {
     PT[r.date] = {open:r.open_now, opened:r.opened, closed:r.closed, backlog:r.backlog, over7:r.open_7d_plus||0};
   });
-
+ 
   LP = {};
   d.properties.forEach(r => {
     LP[r.name] = {open:r.open_now, opened:r.opened||0, closed:r.closed||0, backlog:r.backlog, over7:r.open_7d_plus, last3d:r.opened_3d, last7d:r.opened_7d||0};
   });
-
+ 
   LT = {};
   d.techs.forEach(r => {
     LT[r.name] = {open:r.open_now, opened:r.opened||0, closed:r.closed||0, backlog:r.backlog, over7:r.open_7d_plus, last3d:r.opened_3d||0, last7d:r.opened_7d||0};
   });
-
+ 
   const k = d.portfolio_kpis;
   PA = {
     "Emergency": 0,
@@ -254,29 +397,29 @@ function transformPayload(d) {
     "Open Now": k.avg_open_now,
     "Open More 7d": k.avg_open_more_7d || 0
   };
-
+ 
   PRA = {};
   d.properties.forEach(r => {
     PRA[r.name] = {"Open Now":r.avg_open_now,"Backlog":r.avg_backlog,"Open More 7d":0,"Completed Day":0,"Opened Day":0};
   });
-
+ 
   TA = {};
   d.techs.forEach(r => {
     TA[r.name] = {"Open Now":r.avg_open_now,"Backlog":0,"Open More 7d":0,"Completed Day":r.avg_completed_day,"Opened Day":0};
   });
-
+ 
   STALE = d.portfolio_kpis.open_7d_plus || 0;
   OPEN3D = d.portfolio_kpis.opened_3d || 0;
   OPEN7D = d.portfolio_kpis.opened_7d || 0;
   MAX_DATE = d.latest_date;
 }
-
+ 
 document.addEventListener('DOMContentLoaded', () => {
   const overlay = document.createElement('div');
   overlay.id = 'loadingOverlay';
   overlay.innerHTML = `<div class="spinner"></div><div class="load-text">Loading live data…</div>`;
   document.body.appendChild(overlay);
-
+ 
   const callbackName = "dashboardCallback_" + Date.now();
   const timeout = setTimeout(() => {
     overlay.innerHTML = `
@@ -287,16 +430,21 @@ document.addEventListener('DOMContentLoaded', () => {
         <strong style="color:#e2e6f0">Execute as: Me · Access: Anyone</strong>
       </div>`;
   }, 15000);
-
+ 
   window[callbackName] = function(data) {
     clearTimeout(timeout);
     try {
-      transformPayload(data);
-      document.getElementById('asofDate').textContent = MAX_DATE;
-      buildPortfolio();
-      buildProperties();
-      buildTechs();
-      buildAverages();
+      if (CURRENT_MODE === 'turnover') {
+        buildTurnover(data);
+        document.getElementById('asofDate').textContent = data.generated || '—';
+      } else {
+        transformPayload(data);
+        document.getElementById('asofDate').textContent = MAX_DATE;
+        buildPortfolio();
+        buildProperties();
+        buildTechs();
+        buildAverages();
+      }
       overlay.remove();
     } catch(err) {
       overlay.innerHTML = `
@@ -306,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     delete window[callbackName];
   };
-
+ 
   const script = document.createElement('script');
   script.src = API_URL + "?callback=" + callbackName;
   script.onerror = () => {
@@ -319,8 +467,10 @@ document.addEventListener('DOMContentLoaded', () => {
       </div>`;
   };
   document.head.appendChild(script);
+  // expose loadData for mode switching
+  window._dashboardInitialOverlay = overlay;
 });
-
+ 
 function buildPortfolio(){
   const dates=Object.keys(PT).sort();
   const latest=PT[dates[dates.length-1]];
@@ -381,7 +531,7 @@ function buildPortfolio(){
     {label:'7d+ Old',data:dates.map(d=>PT[d].over7),borderColor:C.d,backgroundColor:'rgba(255,94,122,.08)',fill:true,tension:.3,pointRadius:2,borderWidth:2},
   ]},options:{...BASE,plugins:{...BASE.plugins,legend:LEG}}});
 }
-
+ 
 function buildProperties(){
   const props=Object.entries(LP).sort((a,b)=>b[1].open-a[1].open);
   const maxO=Math.max(...props.map(p=>p[1].open));
@@ -413,12 +563,12 @@ function buildProperties(){
     </tr>`;
   });
 }
-
+ 
 function buildTechs(){
   const techs=Object.entries(LT).sort((a,b)=>b[1].open-a[1].open);
   const maxO=Math.max(...techs.map(t=>t[1].open));
   const fn=n=>n.split(' ')[0];
-
+ 
   // ── ADDED: one row of 8 KPI tiles per technician ──
   const section=document.getElementById('techKpiSection');
   techs.forEach(([name,d])=>{
@@ -439,7 +589,7 @@ function buildTechs(){
     section.innerHTML+=`<div class="tech-kpi-name">${name}</div><div class="tech-kpi-row">${tilesHtml}</div>`;
   });
   // ── END ADDED ──
-
+ 
   new Chart(document.getElementById('techBarChart'),{type:'bar',data:{labels:techs.map(t=>fn(t[0])),datasets:[
     {label:'Open',data:techs.map(t=>t[1].open),backgroundColor:techs.map(t=>t[1].open>=20?'rgba(255,94,122,.7)':t[1].open>=10?'rgba(255,184,79,.7)':'rgba(79,255,176,.7)'),borderRadius:3},
   ]},options:{...BASE}});
@@ -464,7 +614,7 @@ function buildTechs(){
     </div>`;
   });
 }
-
+ 
 function buildAverages(){
   const kpis=[
     {l:'Avg Open Now',k:'Open Now',c:C.a},{l:'Avg Opened/Day',k:'Opened Day',c:C.b},
@@ -499,6 +649,98 @@ function buildAverages(){
       </div>
     </div>`;
   });
+}
+ 
+function buildTurnover(d) {
+  const months   = d.months;
+  const props    = d.properties;
+  const portfolio= d.portfolio;
+  const data     = d.data;
+ 
+  // Current month key
+  const currentMk = months.find(m => m.isCurrent);
+  const cmk = currentMk ? currentMk.key : '';
+ 
+  // Summary strip — current month
+  const cp = portfolio[cmk] || {moveOuts:0, photosOpen:0, photosCompleted:0, vumcOpen:0, vumcCompleted:0};
+  const summaryKpis = [
+    {l:'Move-Outs',     v:cp.moveOuts,          s:'total this month',      c:'#4f9fff'},
+    {l:'Photos Open',   v:cp.photosOpen,         s:'not yet completed',     c:'#ffb84f'},
+    {l:'Photos Done',   v:cp.photosCompleted,    s:'completed this month',  c:'#4fffb0'},
+    {l:'VUMCs Open',    v:cp.vumcOpen,           s:'not yet completed',     c:'#ffb84f'},
+    {l:'VUMCs Done',    v:cp.vumcCompleted,      s:'completed this month',  c:'#4fffb0'},
+  ];
+  const strip = document.getElementById('tv-summary');
+  summaryKpis.forEach(k => {
+    strip.innerHTML += `<div class="tv-kpi" style="--kc:${k.c}">
+      <div class="tv-kpi-label">${k.l}</div>
+      <div class="tv-kpi-value" style="color:${k.c}">${k.v}</div>
+      <div class="tv-kpi-sub">${k.s}</div>
+    </div>`;
+  });
+ 
+  // Build header row
+  function buildHeader(months) {
+    let html = '<thead><tr><th class="prop">Property</th>';
+    months.forEach(m => {
+      const cls = m.isCurrent ? 'month-group current' : 'month-group';
+      html += `<th class="${cls}">${m.label}</th>`;
+    });
+    html += '</tr></thead>';
+    return html;
+  }
+ 
+  // Build a table for a given metric
+  function buildTable(tableId, metricFn, cellClass, portfolioFn) {
+    const tbl = document.getElementById(tableId);
+    let html = buildHeader(months);
+    html += '<tbody>';
+ 
+    // Portfolio row
+    html += '<tr class="portfolio"><td class="prop">Portfolio</td>';
+    months.forEach(m => {
+      const v = portfolioFn(portfolio[m.key] || {});
+      const cls = 'tv-current-col ' + (m.isCurrent ? 'tv-current-col ' : '') + (v === 0 ? 'zero' : cellClass);
+      html += `<td class="${cls}">${v || 0}</td>`;
+    });
+    html += '</tr>';
+ 
+    // Property rows
+    props.forEach(prop => {
+      html += `<tr><td class="prop">${prop}</td>`;
+      months.forEach(m => {
+        const b = (data[prop] && data[prop][m.key]) || {};
+        const v = metricFn(b);
+        const cls = (m.isCurrent ? 'tv-current-col ' : '') + (v === 0 ? 'zero' : cellClass);
+        html += `<td class="${cls}">${v || 0}</td>`;
+      });
+      html += '</tr>';
+    });
+ 
+    html += '</tbody>';
+    tbl.innerHTML = html;
+  }
+ 
+  // Photos Open table
+  buildTable('tv-photos-table',
+    b => b.photosOpen || 0,
+    'open',
+    p => p.photosOpen || 0
+  );
+ 
+  // VUMC Open table
+  buildTable('tv-vumc-table',
+    b => b.vumcOpen || 0,
+    'open',
+    p => p.vumcOpen || 0
+  );
+ 
+  // Move-Outs table
+  buildTable('tv-mo-table',
+    b => b.moveOuts || 0,
+    'mo',
+    p => p.moveOuts || 0
+  );
 }
 </script>
 </body>
