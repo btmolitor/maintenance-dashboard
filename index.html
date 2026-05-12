@@ -140,7 +140,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
 </style>
 </head>
 <body>
- 
+
 <div class="header">
   <div class="header-left">
     <div class="logo">
@@ -162,14 +162,14 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
     </div>
   </div>
 </div>
- 
+
 <div class="tabs">
   <div class="tab active" onclick="showPage('portfolio',this)">Portfolio</div>
   <div class="tab" onclick="showPage('properties',this)">By Property</div>
   <div class="tab" onclick="showPage('technicians',this)">By Technician</div>
   <div class="tab" onclick="showPage('averages',this)">Avg Day Benchmarks</div>
 </div>
- 
+
 <div id="maintenance-pages" class="maintenance-view">
 <div class="page active" id="page-portfolio">
   <div class="kpi-strip" id="port-kpis"></div>
@@ -188,7 +188,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
     </div>
   </div>
 </div>
- 
+
 <div class="page" id="page-properties">
   <div class="card" style="margin-bottom:20px;">
     <div class="ch"><div class="ctitle">Open WRs by Property</div><div class="cbadge">as of 2026-03-30</div></div>
@@ -206,7 +206,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
     </div>
   </div>
 </div>
- 
+
 <div class="page" id="page-technicians">
   <div class="tech-kpi-section" id="techKpiSection"></div>
   <div class="g2" style="margin-bottom:20px;">
@@ -222,7 +222,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
   <div class="slabel">Technician Detail Cards</div>
   <div class="tgrid" id="techGrid"></div>
 </div>
- 
+
 <div class="page" id="page-averages">
   <div class="slabel">Portfolio Average Day — 6-Bucket Rolling</div>
   <div class="kpi-strip" id="avg-kpis"></div>
@@ -241,20 +241,26 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
     <div id="avgCompare"></div>
   </div>
 </div>
- 
+
 </div><!-- end maintenance-pages -->
- 
+
 <div id="turnover-page" class="turnover-view" style="padding:28px 32px 40px;display:none;">
-  <div class="tv-section-label">Current Month Summary</div>
-  <div class="tv-summary-strip" id="tv-summary"></div>
+  <div class="tv-section-label">Previous Month</div>
+  <div class="tv-summary-strip" id="tv-summary-prev"></div>
+  <div class="tv-section-label">Current Month</div>
+  <div class="tv-summary-strip" id="tv-summary-curr"></div>
+  <div class="tv-section-label">Next Month</div>
+  <div class="tv-summary-strip" id="tv-summary-next"></div>
+  <div class="tv-section-label">Move-Outs by Month</div>
+  <div class="card" style="margin-bottom:20px;"><div class="cwt"><canvas id="tv-mo-chart"></canvas></div></div>
+  <div class="tv-section-label">Move-Outs by Month &amp; Property</div>
+  <div class="tv-table-wrap"><table class="tv-table" id="tv-mo-table"></table></div>
   <div class="tv-section-label">VUMC Photos — Open by Month &amp; Property</div>
   <div class="tv-table-wrap"><table class="tv-table" id="tv-photos-table"></table></div>
   <div class="tv-section-label">VUMC Maintenance — Open by Month &amp; Property</div>
   <div class="tv-table-wrap"><table class="tv-table" id="tv-vumc-table"></table></div>
-  <div class="tv-section-label">Move-Outs by Month &amp; Property (Total VUMC Photos)</div>
-  <div class="tv-table-wrap"><table class="tv-table" id="tv-mo-table"></table></div>
 </div>
- 
+
 <style>
 #loadingOverlay{
   position:fixed;inset:0;background:#0d0f14;z-index:9999;
@@ -272,22 +278,22 @@ body{background:var(--bg);color:var(--text);font-family:var(--fd);min-height:100
 </style>
 <script>
 const API_URL = "https://script.google.com/macros/s/AKfycbzhJsR-gjKGCpQc3opNG4z7KdSJpz2XXd4gw9KnJpBtk0O3opHS6HiKslDXGejJf-XO/exec";
- 
+
 let MAX_DATE, PT, LP, LT, PA, PRA, TA, STALE, OPEN3D, OPEN7D;
 let CURRENT_MODE = 'maintenance';
- 
+
 function setMode(mode) {
   if (CURRENT_MODE === mode) return;
   CURRENT_MODE = mode;
- 
+
   // Update toggle buttons
   document.getElementById('btn-maintenance').className = 'mode-btn' + (mode === 'maintenance' ? ' active' : '');
   document.getElementById('btn-turnover').className = 'mode-btn' + (mode === 'turnover' ? ' active turnover' : '');
- 
+
   // Update mode indicator
   document.getElementById('modeIndicator').textContent = mode === 'turnover' ? 'Turnover (VUMC)' : 'Maintenance';
   document.getElementById('modeIndicator').style.color = mode === 'turnover' ? '#a78bfa' : 'var(--accent)';
- 
+
   // Show/hide views
   const mPages = document.getElementById('maintenance-pages');
   const tPage  = document.getElementById('turnover-page');
@@ -301,31 +307,31 @@ function setMode(mode) {
     tPage.style.display  = 'none';
     tabs.style.display   = '';
   }
- 
+
   // Re-fetch and re-render
   loadData();
 }
- 
+
 function loadData() {
   const overlay = document.createElement('div');
   overlay.id = 'reloadOverlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(13,15,20,.8);z-index:9999;display:flex;align-items:center;justify-content:center;';
   overlay.innerHTML = '<div class="spinner"></div>';
   document.body.appendChild(overlay);
- 
+
   // Clear all rendered content
   ['port-kpis','propTbody','techKpiSection','techGrid','avg-kpis','avgCompare',
-   'tv-summary','tv-photos-table','tv-vumc-table','tv-mo-table'].forEach(id => {
+   'tv-summary-prev','tv-summary-curr','tv-summary-next','tv-photos-table','tv-vumc-table','tv-mo-table'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = '';
   });
- 
+
   // Destroy existing charts
   Chart.helpers.each(Chart.instances, chart => chart.destroy());
- 
+
   const callbackName = "dashboardCallback_" + Date.now();
   const timeout = setTimeout(() => { overlay.remove(); }, 15000);
- 
+
   window[callbackName] = function(data) {
     clearTimeout(timeout);
     try {
@@ -346,42 +352,42 @@ function loadData() {
     overlay.remove();
     delete window[callbackName];
   };
- 
+
   const script = document.createElement('script');
   const modeParam = CURRENT_MODE === 'turnover' ? '&mode=turnover' : '';
   script.src = API_URL + "?callback=" + callbackName + modeParam;
   script.onerror = () => { clearTimeout(timeout); overlay.remove(); };
   document.head.appendChild(script);
 }
- 
+
 const C={a:'#4fffb0',b:'#4f9fff',w:'#ffb84f',d:'#ff5e7a',m:'#6b7394',t:'#e2e6f0',g:'rgba(37,42,56,.5)',bd:'#252a38'};
 const BASE={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#13161e',borderColor:'#252a38',borderWidth:1,titleColor:'#e2e6f0',bodyColor:'#6b7394',titleFont:{family:"'DM Mono',monospace",size:11},bodyFont:{family:"'DM Mono',monospace",size:11},padding:10}},scales:{x:{grid:{color:C.g},ticks:{color:C.m,font:{family:"'DM Mono',monospace",size:10},maxRotation:45},border:{color:C.bd}},y:{grid:{color:C.g},ticks:{color:C.m,font:{family:"'DM Mono',monospace",size:10}},border:{color:C.bd}}}};
 const LEG={display:true,labels:{color:C.m,font:{family:"'DM Mono',monospace",size:10},boxWidth:10,padding:12}};
 function f1(v){return typeof v==='number'?v.toFixed(1):v;}
- 
+
 function showPage(name,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('page-'+name).classList.add('active');
   el.classList.add('active');
 }
- 
+
 function transformPayload(d) {
   PT = {};
   d.portfolio_ts.forEach(r => {
     PT[r.date] = {open:r.open_now, opened:r.opened, closed:r.closed, backlog:r.backlog, over7:r.open_7d_plus||0};
   });
- 
+
   LP = {};
   d.properties.forEach(r => {
     LP[r.name] = {open:r.open_now, opened:r.opened||0, closed:r.closed||0, backlog:r.backlog, over7:r.open_7d_plus, last3d:r.opened_3d, last7d:r.opened_7d||0};
   });
- 
+
   LT = {};
   d.techs.forEach(r => {
     LT[r.name] = {open:r.open_now, opened:r.opened||0, closed:r.closed||0, backlog:r.backlog, over7:r.open_7d_plus, last3d:r.opened_3d||0, last7d:r.opened_7d||0};
   });
- 
+
   const k = d.portfolio_kpis;
   PA = {
     "Emergency": 0,
@@ -397,29 +403,29 @@ function transformPayload(d) {
     "Open Now": k.avg_open_now,
     "Open More 7d": k.avg_open_more_7d || 0
   };
- 
+
   PRA = {};
   d.properties.forEach(r => {
     PRA[r.name] = {"Open Now":r.avg_open_now,"Backlog":r.avg_backlog,"Open More 7d":0,"Completed Day":0,"Opened Day":0};
   });
- 
+
   TA = {};
   d.techs.forEach(r => {
     TA[r.name] = {"Open Now":r.avg_open_now,"Backlog":0,"Open More 7d":0,"Completed Day":r.avg_completed_day,"Opened Day":0};
   });
- 
+
   STALE = d.portfolio_kpis.open_7d_plus || 0;
   OPEN3D = d.portfolio_kpis.opened_3d || 0;
   OPEN7D = d.portfolio_kpis.opened_7d || 0;
   MAX_DATE = d.latest_date;
 }
- 
+
 document.addEventListener('DOMContentLoaded', () => {
   const overlay = document.createElement('div');
   overlay.id = 'loadingOverlay';
   overlay.innerHTML = `<div class="spinner"></div><div class="load-text">Loading live data…</div>`;
   document.body.appendChild(overlay);
- 
+
   const callbackName = "dashboardCallback_" + Date.now();
   const timeout = setTimeout(() => {
     overlay.innerHTML = `
@@ -430,7 +436,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <strong style="color:#e2e6f0">Execute as: Me · Access: Anyone</strong>
       </div>`;
   }, 15000);
- 
+
   window[callbackName] = function(data) {
     clearTimeout(timeout);
     try {
@@ -454,7 +460,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     delete window[callbackName];
   };
- 
+
   const script = document.createElement('script');
   script.src = API_URL + "?callback=" + callbackName;
   script.onerror = () => {
@@ -470,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // expose loadData for mode switching
   window._dashboardInitialOverlay = overlay;
 });
- 
+
 function buildPortfolio(){
   const dates=Object.keys(PT).sort();
   const latest=PT[dates[dates.length-1]];
@@ -531,7 +537,7 @@ function buildPortfolio(){
     {label:'7d+ Old',data:dates.map(d=>PT[d].over7),borderColor:C.d,backgroundColor:'rgba(255,94,122,.08)',fill:true,tension:.3,pointRadius:2,borderWidth:2},
   ]},options:{...BASE,plugins:{...BASE.plugins,legend:LEG}}});
 }
- 
+
 function buildProperties(){
   const props=Object.entries(LP).sort((a,b)=>b[1].open-a[1].open);
   const maxO=Math.max(...props.map(p=>p[1].open));
@@ -563,12 +569,12 @@ function buildProperties(){
     </tr>`;
   });
 }
- 
+
 function buildTechs(){
   const techs=Object.entries(LT).sort((a,b)=>b[1].open-a[1].open);
   const maxO=Math.max(...techs.map(t=>t[1].open));
   const fn=n=>n.split(' ')[0];
- 
+
   // ── ADDED: one row of 8 KPI tiles per technician ──
   const section=document.getElementById('techKpiSection');
   techs.forEach(([name,d])=>{
@@ -589,7 +595,7 @@ function buildTechs(){
     section.innerHTML+=`<div class="tech-kpi-name">${name}</div><div class="tech-kpi-row">${tilesHtml}</div>`;
   });
   // ── END ADDED ──
- 
+
   new Chart(document.getElementById('techBarChart'),{type:'bar',data:{labels:techs.map(t=>fn(t[0])),datasets:[
     {label:'Open',data:techs.map(t=>t[1].open),backgroundColor:techs.map(t=>t[1].open>=20?'rgba(255,94,122,.7)':t[1].open>=10?'rgba(255,184,79,.7)':'rgba(79,255,176,.7)'),borderRadius:3},
   ]},options:{...BASE}});
@@ -614,7 +620,7 @@ function buildTechs(){
     </div>`;
   });
 }
- 
+
 function buildAverages(){
   const kpis=[
     {l:'Avg Open Now',k:'Open Now',c:C.a},{l:'Avg Opened/Day',k:'Opened Day',c:C.b},
@@ -650,37 +656,101 @@ function buildAverages(){
     </div>`;
   });
 }
- 
+
 function buildTurnover(d) {
   const months   = d.months;
   const props    = d.properties;
   const portfolio= d.portfolio;
   const data     = d.data;
- 
-  // Current month key
-  const currentMk = months.find(m => m.isCurrent);
-  const cmk = currentMk ? currentMk.key : '';
- 
-  // Summary strip — current month
-  const cp = portfolio[cmk] || {moveOuts:0, photosOpen:0, photosCompleted:0, vumcOpen:0, vumcCompleted:0};
-  const summaryKpis = [
-    {l:'Move-Outs',     v:cp.moveOuts,          s:'total this month',      c:'#4f9fff'},
-    {l:'Photos Open',   v:cp.photosOpen,         s:'not yet completed',     c:'#ffb84f'},
-    {l:'Photos Done',   v:cp.photosCompleted,    s:'completed this month',  c:'#4fffb0'},
-    {l:'VUMCs Open',    v:cp.vumcOpen,           s:'not yet completed',     c:'#ffb84f'},
-    {l:'VUMCs Done',    v:cp.vumcCompleted,      s:'completed this month',  c:'#4fffb0'},
+
+  // Find month keys
+  const currentIdx = months.findIndex(m => m.isCurrent);
+  const cmk  = currentIdx >= 0 ? months[currentIdx].key : '';
+  const pmk  = currentIdx > 0  ? months[currentIdx - 1].key : '';
+  const nmk  = currentIdx >= 0 && currentIdx < months.length - 1 ? months[currentIdx + 1].key : '';
+
+  // Build a summary strip for a given month key and element id
+  function buildSummaryStrip(mk, stripId, monthLabel) {
+    const p = portfolio[mk] || {moveOuts:0, photosOpen:0, photosCompleted:0, vumcOpen:0, vumcCompleted:0};
+    const kpis = [
+      {l:'Move-Outs',   v:p.moveOuts,       s:monthLabel, c:'#4f9fff'},
+      {l:'Photos Open', v:p.photosOpen,     s:'not yet completed', c:'#ffb84f'},
+      {l:'Photos Done', v:p.photosCompleted,s:'completed', c:'#4fffb0'},
+      {l:'VUMCs Open',  v:p.vumcOpen,       s:'not yet completed', c:'#ffb84f'},
+      {l:'VUMCs Done',  v:p.vumcCompleted,  s:'completed', c:'#4fffb0'},
+    ];
+    const strip = document.getElementById(stripId);
+    if (!strip) return;
+    kpis.forEach(k => {
+      strip.innerHTML += `<div class="tv-kpi" style="--kc:${k.c}">
+        <div class="tv-kpi-label">${k.l}</div>
+        <div class="tv-kpi-value" style="color:${k.c}">${k.v}</div>
+        <div class="tv-kpi-sub">${k.s}</div>
+      </div>`;
+    });
+  }
+
+  const prevMonth = months.find(m => m.key === pmk);
+  const nextMonth = months.find(m => m.key === nmk);
+  const currMonth = months.find(m => m.key === cmk);
+
+  buildSummaryStrip(pmk, 'tv-summary-prev', prevMonth ? prevMonth.label : '');
+  buildSummaryStrip(cmk, 'tv-summary-curr', currMonth ? currMonth.label : '');
+  buildSummaryStrip(nmk, 'tv-summary-next', nextMonth ? nextMonth.label : '');
+
+  // Move-Outs line chart — portfolio total + per property
+  const chartLabels = months.map(m => m.label);
+  const portfolioMo = months.map(m => (portfolio[m.key] || {}).moveOuts || 0);
+
+  // Top 5 properties by total move-outs for readability
+  const propTotals = props.map(p => ({
+    name: p,
+    total: months.reduce((s, m) => s + ((data[p] && data[p][m.key] && data[p][m.key].moveOuts) || 0), 0)
+  })).sort((a, b) => b.total - a.total).slice(0, 6);
+
+  const colors = ['#4fffb0','#4f9fff','#ffb84f','#ff5e7a','#a78bfa','#f472b6'];
+  const datasets = [
+    {
+      label: 'Portfolio',
+      data: portfolioMo,
+      borderColor: '#e2e6f0',
+      backgroundColor: 'rgba(226,230,240,.08)',
+      borderWidth: 2.5,
+      pointRadius: 3,
+      fill: false,
+      tension: .3
+    },
+    ...propTotals.map((p, i) => ({
+      label: p.name,
+      data: months.map(m => (data[p.name] && data[p.name][m.key] && data[p.name][m.key].moveOuts) || 0),
+      borderColor: colors[i] || '#6b7394',
+      borderWidth: 1.5,
+      pointRadius: 2,
+      fill: false,
+      tension: .3,
+      borderDash: [4, 3]
+    }))
   ];
-  const strip = document.getElementById('tv-summary');
-  summaryKpis.forEach(k => {
-    strip.innerHTML += `<div class="tv-kpi" style="--kc:${k.c}">
-      <div class="tv-kpi-label">${k.l}</div>
-      <div class="tv-kpi-value" style="color:${k.c}">${k.v}</div>
-      <div class="tv-kpi-sub">${k.s}</div>
-    </div>`;
+
+  // Destroy existing chart if any
+  const existingChart = Chart.getChart('tv-mo-chart');
+  if (existingChart) existingChart.destroy();
+
+  new Chart(document.getElementById('tv-mo-chart'), {
+    type: 'line',
+    data: { labels: chartLabels, datasets },
+    options: {
+      ...BASE,
+      plugins: { ...BASE.plugins, legend: LEG },
+      scales: {
+        ...BASE.scales,
+        x: { ...BASE.scales.x, ticks: { ...BASE.scales.x.ticks, maxRotation: 50 } }
+      }
+    }
   });
- 
-  // Build header row
-  function buildHeader(months) {
+
+  // Build header row for tables
+  function buildHeader() {
     let html = '<thead><tr><th class="prop">Property</th>';
     months.forEach(m => {
       const cls = m.isCurrent ? 'month-group current' : 'month-group';
@@ -689,22 +759,22 @@ function buildTurnover(d) {
     html += '</tr></thead>';
     return html;
   }
- 
+
   // Build a table for a given metric
   function buildTable(tableId, metricFn, cellClass, portfolioFn) {
     const tbl = document.getElementById(tableId);
-    let html = buildHeader(months);
+    let html = buildHeader();
     html += '<tbody>';
- 
+
     // Portfolio row
     html += '<tr class="portfolio"><td class="prop">Portfolio</td>';
     months.forEach(m => {
       const v = portfolioFn(portfolio[m.key] || {});
-      const cls = 'tv-current-col ' + (m.isCurrent ? 'tv-current-col ' : '') + (v === 0 ? 'zero' : cellClass);
+      const cls = (m.isCurrent ? 'tv-current-col ' : '') + (v === 0 ? 'zero' : cellClass);
       html += `<td class="${cls}">${v || 0}</td>`;
     });
     html += '</tr>';
- 
+
     // Property rows
     props.forEach(prop => {
       html += `<tr><td class="prop">${prop}</td>`;
@@ -716,30 +786,30 @@ function buildTurnover(d) {
       });
       html += '</tr>';
     });
- 
+
     html += '</tbody>';
     tbl.innerHTML = html;
   }
- 
+
+  // Move-Outs table (first)
+  buildTable('tv-mo-table',
+    b => b.moveOuts || 0,
+    'mo',
+    p => p.moveOuts || 0
+  );
+
   // Photos Open table
   buildTable('tv-photos-table',
     b => b.photosOpen || 0,
     'open',
     p => p.photosOpen || 0
   );
- 
+
   // VUMC Open table
   buildTable('tv-vumc-table',
     b => b.vumcOpen || 0,
     'open',
     p => p.vumcOpen || 0
-  );
- 
-  // Move-Outs table
-  buildTable('tv-mo-table',
-    b => b.moveOuts || 0,
-    'mo',
-    p => p.moveOuts || 0
   );
 }
 </script>
